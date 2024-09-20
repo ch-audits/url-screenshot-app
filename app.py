@@ -1,36 +1,22 @@
 import streamlit as st
-from PIL import Image
-import time
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-import os
+import requests
 
-# Function to take screenshots
+# ScreenshotOne API Key (you can get it by signing up for their service)
+API_KEY = "your_screenshotone_api_key_here"
+
+# Function to take screenshots using the ScreenshotOne API
 def take_screenshot(url, device_name):
-    chrome_options = Options()
-    
-    # Emulate different devices
-    if device_name == "Mobile":
-        chrome_options.add_argument("--window-size=375,667")
-    elif device_name == "Tablet":
-        chrome_options.add_argument("--window-size=768,1024")
-    elif device_name == "Desktop":
-        chrome_options.add_argument("--window-size=1366,768")
-    
-    driver = webdriver.Chrome(options=chrome_options)
-    driver.get(url)
-    
-    # Define the screenshot path
-    screenshot_path = f'screenshots/{device_name}_{int(time.time())}.png'
-    
-    # Save the screenshot
-    driver.save_screenshot(screenshot_path)
-    driver.quit()
-    return screenshot_path
+    api_url = f"https://api.screenshotone.com/take?url={url}&device={device_name}&access_key={API_KEY}"
+    response = requests.get(api_url)
 
-# Create a folder to save screenshots
-if not os.path.exists('screenshots'):
-    os.makedirs('screenshots')
+    if response.status_code == 200:
+        file_name = f'screenshots/{device_name}_{url.replace("https://", "").replace("/", "_")}.png'
+        with open(file_name, 'wb') as f:
+            f.write(response.content)
+        return file_name
+    else:
+        st.error("Failed to capture screenshot")
+        return None
 
 # Streamlit app layout
 st.title("URL Screenshot App")
@@ -39,6 +25,10 @@ st.write("Upload up to 5 URLs, and get screenshots across multiple devices.")
 # URL input
 urls = st.text_area("Enter up to 5 URLs, each on a new line:", max_chars=500).splitlines()
 
+# Create screenshots directory if it doesn't exist
+if not os.path.exists('screenshots'):
+    os.makedirs('screenshots')
+
 # Capture screenshots on button press
 if st.button("Capture Screenshots"):
     if len(urls) > 5:
@@ -46,10 +36,13 @@ if st.button("Capture Screenshots"):
     else:
         for url in urls:
             st.write(f"Taking screenshots for {url}")
-            mobile_ss = take_screenshot(url, "Mobile")
-            tablet_ss = take_screenshot(url, "Tablet")
-            desktop_ss = take_screenshot(url, "Desktop")
+            mobile_ss = take_screenshot(url, "mobile")
+            tablet_ss = take_screenshot(url, "tablet")
+            desktop_ss = take_screenshot(url, "desktop")
 
-            st.image(mobile_ss, caption="Mobile")
-            st.image(tablet_ss, caption="Tablet")
-            st.image(desktop_ss, caption="Desktop")
+            if mobile_ss:
+                st.image(mobile_ss, caption="Mobile")
+            if tablet_ss:
+                st.image(tablet_ss, caption="Tablet")
+            if desktop_ss:
+                st.image(desktop_ss, caption="Desktop")
